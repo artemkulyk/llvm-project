@@ -46,6 +46,14 @@ struct CieRecord {
   SmallVector<EhSectionPiece *, 0> fdes;
 };
 
+// CIE information used to decide whether two FDEs are equivalent for ICF.
+struct CieInfo {
+  const EhSectionPiece *piece;
+  ArrayRef<Relocation> rels;
+  // The 'P' augmentation encoding, or 0 if the CIE has no personality.
+  uint8_t personalityEncoding;
+};
+
 // Section for .eh_frame.
 class EhFrameSection final : public SyntheticSection {
 public:
@@ -70,6 +78,15 @@ public:
   ArrayRef<CieRecord *> getCieRecords() const { return cieRecords; }
   template <class ELFT>
   void iterateFDEWithLSDA(llvm::function_ref<void(InputSection &)> fn);
+  // Call fn for each live FDE with LSDA. fn receives the section the FDE
+  // describes, the CIE the FDE references, the LSDA target symbol and the
+  // relocation addend.
+  template <class ELFT>
+  void iterateFDEWithLSDATarget(
+      llvm::function_ref<void(InputSection &, const CieInfo &, const Symbol &,
+                              int64_t)>
+          fn,
+      bool reportErrors = true);
 
 private:
   // This is used only when parsing EhInputSection. We keep it here to avoid
@@ -81,6 +98,13 @@ private:
   void iterateFDEWithLSDAAux(EhInputSection &sec,
                              llvm::DenseSet<size_t> &ciesWithLSDA,
                              llvm::function_ref<void(InputSection &)> fn);
+  template <class ELFT>
+  void iterateFDEWithLSDATargetAux(
+      EhInputSection &sec, llvm::DenseMap<size_t, CieInfo> &ciesWithLSDA,
+      llvm::function_ref<void(InputSection &, const CieInfo &, const Symbol &,
+                              int64_t)>
+          fn,
+      bool reportErrors);
 
   CieRecord *addCie(EhSectionPiece &piece, ArrayRef<Relocation> rels);
   Defined *isFdeLive(EhSectionPiece &piece, ArrayRef<Relocation> rels);

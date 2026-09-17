@@ -15,7 +15,12 @@ namespace lld::elf {
 struct EhSectionPiece;
 
 uint8_t getFdeEncoding(EhSectionPiece *p);
-bool hasLSDA(const EhSectionPiece &p);
+// Returns the 'P' (personality) encoding of a CIE, or 0 if there is none.
+uint8_t getPersonalityEncoding(const EhSectionPiece &p,
+                               bool reportErrors = true);
+// reportErrors=false suppresses diagnostics (used by pre-passes that run
+// before EhFrameSection::finalizeContents, which reports them).
+bool hasLSDA(const EhSectionPiece &p, bool reportErrors = true);
 }
 
 #endif
