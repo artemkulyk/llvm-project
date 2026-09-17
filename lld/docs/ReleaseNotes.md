@@ -29,6 +29,11 @@ from the [LLVM releases web site](https://llvm.org/releases/).
 
 ### ELF Improvements
 
+* `.dynstr`, `.strtab`, and `.shstrtab` are now tail merged: identical strings
+  are deduplicated and a string that is a suffix of a longer string shares its
+  storage, reducing the output size. Merging a table larger than 64 KiB
+  requires `-O2`.
+
 ### Breaking changes
 
 ### COFF Improvements

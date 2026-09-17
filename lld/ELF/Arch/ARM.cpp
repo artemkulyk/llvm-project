@@ -1557,9 +1557,11 @@ void ArmCmseSGSection::finalizeContents() {
 // https://developer.arm.com/documentation/ecm0359818/latest
 template <typename ELFT> void elf::writeARMCmseImportLib(Ctx &ctx) {
   auto shstrtab =
-      std::make_unique<StringTableSection>(ctx, ".shstrtab", /*dynamic=*/false);
+      std::make_unique<StringTableSection>(ctx, ".shstrtab", /*dynamic=*/false,
+                                           /*tailMerge=*/false);
   auto strtab =
-      std::make_unique<StringTableSection>(ctx, ".strtab", /*dynamic=*/false);
+      std::make_unique<StringTableSection>(ctx, ".strtab", /*dynamic=*/false,
+                                           /*tailMerge=*/false);
   auto impSymTab = std::make_unique<SymbolTableSection<ELFT>>(ctx, *strtab);
 
   SmallVector<std::pair<std::unique_ptr<OutputSection>, SyntheticSection *>, 0>

@@ -2133,6 +2133,7 @@ template <class ELFT> void Writer<ELFT>::finalizeSections() {
     finalizeSynthetic(ctx, ctx.in.verSym.get());
     finalizeSynthetic(ctx, ctx.in.verNeed.get());
     finalizeSynthetic(ctx, ctx.in.dynamic.get());
+    finalizeSynthetic(ctx, ctx.in.dynStrTab.get());
   }
 
   if (!ctx.script->hasSectionsCommand && !ctx.arg.relocatable)

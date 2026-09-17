@@ -1098,35 +1098,77 @@ void IgotPltSection::writeTo(uint8_t *buf) {
   }
 }
 
-StringTableSection::StringTableSection(Ctx &ctx, StringRef name, bool dynamic)
+StringTableSection::StringTableSection(Ctx &ctx, StringRef name, bool dynamic,
+                                       bool tailMerge)
     : SyntheticSection(ctx, name, SHT_STRTAB, dynamic ? (uint64_t)SHF_ALLOC : 0,
                        1),
-      dynamic(dynamic) {
+      dynamic(dynamic), tailMerge(tailMerge),
+      builder(llvm::StringTableBuilder::ELF, llvm::Align(1)) {
   // ELF string tables start with a NUL byte.
-  strings.push_back("");
-  stringMap.try_emplace(CachedHashStringRef(""), 0);
   size = 1;
+  strings.push_back("");
 }
 
-// Adds a string to the string table. If `hashIt` is true we hash and check for
-// duplicates. It is optional because the name of global symbols are already
-// uniqued and hashing them again has a big cost for a small value: uniquing
-// them with some other string that happens to be the same.
+// Tail merging is O(n log n) in the number of strings. To bound its cost,
+// merge by default only when the table is small; -O2 merges any size.
+static constexpr size_t tailMergeLimit = 64 * 1024;
+
+// Adds a string and returns a tentative offset, which doubles as a stable
+// ordering key for symbol tables. The final offset of a string added before
+// finalization is queried with getFinalOffset().
 unsigned StringTableSection::addString(StringRef s, bool hashIt) {
+  if (s.empty())
+    return 0;
+  if (merged) {
+    // Thunk symbols are added during finalization. Reuse an existing entry or
+    // append after the merged contents without sharing.
+    if (builder.contains(s))
+      return builder.getOffset(s);
+    unsigned ret = size;
+    size += s.size() + 1;
+    overflow.push_back(s);
+    return ret;
+  }
   if (hashIt) {
-    auto r = stringMap.try_emplace(CachedHashStringRef(s), size);
+    auto r = dedupMap.try_emplace(llvm::CachedHashStringRef(s), size);
     if (!r.second)
       return r.first->second;
   }
-  if (s.empty())
-    return 0;
-  unsigned ret = this->size;
-  this->size = this->size + s.size() + 1;
+  unsigned ret = size;
+  size += s.size() + 1;
   strings.push_back(s);
   return ret;
 }
 
+void StringTableSection::finalizeContents() {
+  if (!tailMerge)
+    return;
+  // Bound the default cost; -O2 opts into merging large tables.
+  if (ctx.arg.optimize < 2 && size > tailMergeLimit)
+    return;
+  for (StringRef s : strings)
+    if (!s.empty())
+      builder.add(s);
+  builder.finalize();
+  size = builder.getSize();
+  merged = true;
+  // The builder owns the final contents.
+  SmallVector<StringRef, 0>().swap(strings);
+}
+
 void StringTableSection::writeTo(uint8_t *buf) {
+  if (merged) {
+    // The output buffer is zero-initialized, so the terminating NULs of the
+    // strings do not need to be written explicitly.
+    builder.write(buf);
+    uint8_t *p = buf + builder.getSize();
+    for (StringRef s : overflow) {
+      memcpy(p, s.data(), s.size());
+      p[s.size()] = '\0';
+      p += s.size() + 1;
+    }
+    return;
+  }
   for (StringRef s : strings) {
     memcpy(buf, s.data(), s.size());
     buf[s.size()] = '\0';
@@ -2131,7 +2173,7 @@ template <class ELFT> void SymbolTableSection<ELFT>::writeTo(uint8_t *buf) {
   for (SymbolTableEntry &ent : symbols) {
     Symbol *sym = ent.sym;
     // Set st_name, st_info and st_other.
-    eSym->st_name = ent.strTabOffset;
+    eSym->st_name = strTabSec.getFinalOffset(ent.strTabOffset, sym->getName());
     eSym->setBindingAndType(sym->binding, sym->type);
     eSym->st_other = sym->stOther;
 
@@ -3561,12 +3603,15 @@ void VersionDefinitionSection::writeOne(uint8_t *buf, uint32_t index,
 }
 
 void VersionDefinitionSection::writeTo(uint8_t *buf) {
-  writeOne(buf, 1, getFileDefName(), fileDefNameOff);
+  StringRef fileDefName = getFileDefName();
+  writeOne(buf, 1, fileDefName,
+           ctx.in.dynStrTab->getFinalOffset(fileDefNameOff, fileDefName));
 
   auto nameOffIt = verDefNameOffs.begin();
   for (const VersionDefinition &v : namedVersionDefs(ctx)) {
     buf += EntrySize;
-    writeOne(buf, v.id, v.name, *nameOffIt++);
+    writeOne(buf, v.id, v.name,
+             ctx.in.dynStrTab->getFinalOffset(*nameOffIt++, v.name));
   }
 
   // Need to terminate the last version definition.
@@ -3640,6 +3685,7 @@ template <class ELFT> void VersionNeedSection<ELFT>::finalizeContents() {
     verneeds.emplace_back();
     Verneed &vn = verneeds.back();
     vn.nameStrTab = ctx.in.dynStrTab->addString(f->soName);
+    vn.name = f->soName;
     bool isLibc = ctx.arg.relrGlibc && f->soName.starts_with("libc.so.");
     bool isGlibc2 = false;
     for (unsigned i = 0; i != f->verneedInfo.size(); ++i) {
@@ -3655,14 +3701,15 @@ template <class ELFT> void VersionNeedSection<ELFT>::finalizeContents() {
       if (isLibc && ver.starts_with("GLIBC_2."))
         isGlibc2 = true;
       vn.vernauxs.push_back({verdef->vd_hash, f->verneedInfo[i],
-                             ctx.in.dynStrTab->addString(ver)});
+                             ctx.in.dynStrTab->addString(ver), ver});
     }
     if (isGlibc2) {
       const char *ver = "GLIBC_ABI_DT_RELR";
       vn.vernauxs.push_back(
           {hashSysV(ver),
            {uint16_t(++ctx.vernauxNum + getVerDefNum(ctx)), false},
-           ctx.in.dynStrTab->addString(ver)});
+           ctx.in.dynStrTab->addString(ver),
+           ver});
     }
   }
 
@@ -3680,7 +3727,7 @@ template <class ELFT> void VersionNeedSection<ELFT>::writeTo(uint8_t *buf) {
     // Create an Elf_Verneed for this DSO.
     verneed->vn_version = 1;
     verneed->vn_cnt = vn.vernauxs.size();
-    verneed->vn_file = vn.nameStrTab;
+    verneed->vn_file = ctx.in.dynStrTab->getFinalOffset(vn.nameStrTab, vn.name);
     verneed->vn_aux =
         reinterpret_cast<char *>(vernaux) - reinterpret_cast<char *>(verneed);
     verneed->vn_next = sizeof(Elf_Verneed);
@@ -3691,7 +3738,8 @@ template <class ELFT> void VersionNeedSection<ELFT>::writeTo(uint8_t *buf) {
       vernaux->vna_hash = vna.hash;
       vernaux->vna_flags = vna.verneedInfo.weak ? VER_FLG_WEAK : 0;
       vernaux->vna_other = vna.verneedInfo.id;
-      vernaux->vna_name = vna.nameStrTab;
+      vernaux->vna_name =
+          ctx.in.dynStrTab->getFinalOffset(vna.nameStrTab, vna.name);
       vernaux->vna_next = sizeof(Elf_Vernaux);
       ++vernaux;
     }
@@ -4471,14 +4519,16 @@ template <class ELFT> void elf::createSyntheticSections(Ctx &ctx) {
 
   if (ctx.arg.zSectionHeader)
     ctx.in.shStrTab =
-        std::make_unique<StringTableSection>(ctx, ".shstrtab", false);
+        std::make_unique<StringTableSection>(ctx, ".shstrtab", false,
+                                             /*tailMerge=*/true);
 
   ctx.out.programHeaders =
       std::make_unique<OutputSection>(ctx, "", 0, SHF_ALLOC);
   ctx.out.programHeaders->addralign = ctx.arg.wordsize;
 
   if (ctx.arg.strip != StripPolicy::All) {
-    ctx.in.strTab = std::make_unique<StringTableSection>(ctx, ".strtab", false);
+    ctx.in.strTab = std::make_unique<StringTableSection>(ctx, ".strtab", false,
+                                                         /*tailMerge=*/true);
     ctx.in.symTab =
         std::make_unique<SymbolTableSection<ELFT>>(ctx, *ctx.in.strTab);
     ctx.in.symTabShndx = std::make_unique<SymtabShndxSection>(ctx);
@@ -4510,7 +4560,8 @@ template <class ELFT> void elf::createSyntheticSections(Ctx &ctx) {
     // dynSymTab is always present to simplify several finalizeSections
     // functions.
     ctx.in.dynStrTab =
-        std::make_unique<StringTableSection>(ctx, ".dynstr", true);
+        std::make_unique<StringTableSection>(ctx, ".dynstr", true,
+                                             /*tailMerge=*/true);
     ctx.in.dynSymTab =
         std::make_unique<SymbolTableSection<ELFT>>(ctx, *ctx.in.dynStrTab);
 

@@ -19,7 +19,7 @@
 # DSO-NEXT:    }
 # DSO-NEXT:    Symbol {
 # DSO-NEXT:      Name: b@V1
-# DSO-NEXT:      Value: 0x12E9
+# DSO-NEXT:      Value: 0x12E5
 # DSO-NEXT:      Size: 0
 # DSO-NEXT:      Binding: Global
 # DSO-NEXT:      Type: Function
@@ -28,7 +28,7 @@
 # DSO-NEXT:    }
 # DSO-NEXT:    Symbol {
 # DSO-NEXT:      Name: b@@V2
-# DSO-NEXT:      Value: 0x12EA
+# DSO-NEXT:      Value: 0x12E6
 # DSO-NEXT:      Size: 0
 # DSO-NEXT:      Binding: Global
 # DSO-NEXT:      Type: Function
@@ -37,7 +37,7 @@
 # DSO-NEXT:    }
 # DSO-NEXT:    Symbol {
 # DSO-NEXT:      Name: a@@V1
-# DSO-NEXT:      Value: 0x12E8
+# DSO-NEXT:      Value: 0x12E4
 # DSO-NEXT:      Size: 0
 # DSO-NEXT:      Binding: Global
 # DSO-NEXT:      Type: Function
@@ -46,7 +46,7 @@
 # DSO-NEXT:    }
 # DSO-NEXT:    Symbol {
 # DSO-NEXT:      Name: c@@V2
-# DSO-NEXT:      Value: 0x12EB
+# DSO-NEXT:      Value: 0x12E7
 # DSO-NEXT:      Size: 0
 # DSO-NEXT:      Binding: Global
 # DSO-NEXT:      Type: Function

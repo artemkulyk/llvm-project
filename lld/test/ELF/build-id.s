@@ -66,15 +66,15 @@ _start:
 # FAST:      Contents of section .note.test:
 # FAST:      Contents of section .note.gnu.build-id:
 # FAST-NEXT: 04000000 08000000 03000000 474e5500  ............GNU.
-# FAST-NEXT: 630bc2f5 a2584763
+# FAST-NEXT: c0bbb38d 43f5cc4c
 
 # MD5:      Contents of section .note.gnu.build-id:
 # MD5-NEXT: 04000000 10000000 03000000 474e5500  ............GNU.
-# MD5-NEXT: dbf0bc13 b3ff11e9 fde6e17c 0304983c
+# MD5-NEXT: e0abec31 73d5bb71 05f5e27f 4d5afad7
 
 # SHA1:      Contents of section .note.gnu.build-id:
 # SHA1-NEXT: 04000000 14000000 03000000 474e5500  ............GNU.
-# SHA1-NEXT: 1215775f d3b60050 70afd970 e8a10972
+# SHA1-NEXT: 30a42fc8 7d65f522 d810d8f1 9b0a06f7
 
 # UUID:      Contents of section .note.gnu.build-id:
 # UUID-NEXT: 04000000 10000000 03000000 474e5500  ............GNU.
@@ -90,11 +90,11 @@ _start:
 
 # SEPARATE:      Hex dump of section '.note.gnu.build-id':
 # SEPARATE-NEXT: 0x00200198 04000000 14000000 03000000 474e5500
-# SEPARATE-NEXT: 0x002001a8 5cd067a4 2631c0fd 42029037 4b8e0938
+# SEPARATE-NEXT: 0x002001a8 9b2db9a1 0b6b21a9 4f45631e 824ac2ad
 
 # RUN: ld.lld --build-id=sha1 --no-rosegment %t -o %t2
 # RUN: llvm-readelf -x .note.gnu.build-id %t2 | FileCheck --check-prefix=NORO %s
 
 # NORO:      Hex dump of section '.note.gnu.build-id':
 # NORO-NEXT: 0x00200160 04000000 14000000 03000000 474e5500
-# NORO-NEXT: 0x00200170 a328cc99 45bfc3fc a9fc8615 37102f9d
+# NORO-NEXT: 0x00200170 0328ea02 3763c298 6d518d46 1ea43766

@@ -18,7 +18,7 @@
 // CHECK-NEXT: AddressAlignment: 1
 // CHECK-NEXT: EntrySize: 0
 // CHECK-NEXT: SectionData (
-// CHECK-NEXT:   0000: 00666F6F 00742E73 6F007665 7200      |.foo.t.so.ver.|
+// CHECK-NEXT:   0000: 00766572 00742E73 6F00666F 6F00      |.ver.t.so.foo.|
 // CHECK-NEXT: )
 
 // CHECK:      VersionSymbols [

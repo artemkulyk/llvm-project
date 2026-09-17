@@ -65,7 +65,8 @@ void OutputSection::writeHeaderTo(typename ELFT::Shdr *shdr) {
   shdr->sh_link = link;
   shdr->sh_addr = addr;
   shdr->sh_size = size;
-  shdr->sh_name = shName;
+  shdr->sh_name =
+      ctx.in.shStrTab ? ctx.in.shStrTab->getFinalOffset(shName, name) : shName;
 }
 
 OutputSection::OutputSection(Ctx &ctx, StringRef name, uint32_t type,

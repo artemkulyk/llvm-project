@@ -406,19 +406,42 @@ private:
   SmallVector<const Symbol *, 0> entries;
 };
 
+// .dynstr, .strtab, and .shstrtab. Their contents are NUL-terminated strings
+// referenced by offsets, so identical strings and strings that are suffixes of
+// longer strings can share storage. Sharing is computed once all strings are
+// known, which makes the result independent of the insertion order.
 class StringTableSection final : public SyntheticSection {
 public:
-  StringTableSection(Ctx &, StringRef name, bool dynamic);
+  StringTableSection(Ctx &, StringRef name, bool dynamic, bool tailMerge);
   unsigned addString(StringRef s, bool hashIt = true);
+  void finalizeContents() override;
   void writeTo(uint8_t *buf) override;
   size_t getSize() const override { return size; }
   bool isDynamic() const { return dynamic; }
 
+  // Returns the final offset of the string whose tentative offset was
+  // returned by addString() before finalization. Callers translate with the
+  // name because tail merging can move a string.
+  unsigned getFinalOffset(unsigned tentative, StringRef s) const {
+    if (merged && builder.contains(s))
+      return builder.getOffset(s);
+    return tentative;
+  }
+
 private:
   const bool dynamic;
+  const bool tailMerge;
+  // Whether finalizeContents() built a tail-merged table.
+  bool merged = false;
 
-  llvm::DenseMap<llvm::CachedHashStringRef, unsigned> stringMap;
+  llvm::StringTableBuilder builder;
+  // Deduplicates strings added with hashIt=true before merging.
+  llvm::DenseMap<llvm::CachedHashStringRef, unsigned> dedupMap;
+  // Contents in append order, used until the table is merged.
   SmallVector<StringRef, 0> strings;
+  // Strings added after merging (e.g. thunk symbols); appended after the
+  // merged contents.
+  SmallVector<StringRef, 0> overflow;
 };
 
 class DynamicReloc {
@@ -1071,10 +1094,12 @@ class VersionNeedSection final : public SyntheticSection {
     uint64_t hash;
     SharedFile::VerneedInfo verneedInfo;
     uint64_t nameStrTab;
+    StringRef name;
   };
 
   struct Verneed {
     uint64_t nameStrTab;
+    StringRef name;
     std::vector<Vernaux> vernauxs;
   };
 

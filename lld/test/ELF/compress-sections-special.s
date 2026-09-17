@@ -14,7 +14,7 @@
 # CHECK:      warning: {{.*}}: unable to get the string table for the SHT_SYMTAB section: SHT_STRTAB string table section
 
 # CHECK:      Hex dump of section '.strtab':
-# CHECK-NEXT: 01000000 00000000 5c000000 00000000
+# CHECK-NEXT: 01000000 00000000 56000000 00000000
 # CHECK-NEXT: 01000000 00000000 {{.*}}
 
 # RUN: not ld.lld -shared a.o --compress-sections .dynstr=zlib 2>&1 | FileCheck %s --check-prefix=ERR-ALLOC

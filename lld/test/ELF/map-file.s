@@ -102,10 +102,10 @@ labs = 0x1AB5
 # CHECK-NEXT:               0                0        8     1         <internal>:(.comment)
 # CHECK-NEXT:               0                0      1b0     8 .symtab
 # CHECK-NEXT:               0                0      1b0     8         <internal>:(.symtab)
-# CHECK-NEXT:               0                0       93     1 .shstrtab
-# CHECK-NEXT:               0                0       93     1         <internal>:(.shstrtab)
-# CHECK-NEXT:               0                0       71     1 .strtab
-# CHECK-NEXT:               0                0       71     1         <internal>:(.strtab)
+# CHECK-NEXT:               0                0       88     1 .shstrtab
+# CHECK-NEXT:               0                0       88     1         <internal>:(.shstrtab)
+# CHECK-NEXT:               0                0       6d     1 .strtab
+# CHECK-NEXT:               0                0       6d     1         <internal>:(.strtab)
 
 # CHECK2:                 VMA              LMA     Size Align Out     In      Symbol
 # CHECK2-NEXT:         200200           200200       78     8 .dynsym

@@ -60,7 +60,7 @@
 # SECTION:   3 .bss          00000018 0000000000000000 BSS
 # SECTION:   4 .note.GNU-stack 00000000 0000000000000000
 # SECTION:   5 .symtab       00000180 0000000000000000
-# SECTION:   6 .shstrtab     00000041 0000000000000000
+# SECTION:   6 .shstrtab     0000003b 0000000000000000
 # SECTION:   7 .strtab       {{[0-9a-f]+}} 0000000000000000
 
 # CHECKTEXT:      Disassembly of section .text:

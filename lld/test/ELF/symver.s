@@ -167,9 +167,9 @@
 # W5REL-NEXT: }
 
 # W5DIS-LABEL: <.text>:
-# W5DIS-NEXT:    callq 0x1350 <foo@plt>
+# W5DIS-NEXT:    callq 0x1340 <foo@plt>
 # W5DIS-COUNT-3: int3
-# W5DIS-NEXT:    callq 0x1350 <foo@plt>
+# W5DIS-NEXT:    callq 0x1340 <foo@plt>
 
 #--- ver
 v1 {};
